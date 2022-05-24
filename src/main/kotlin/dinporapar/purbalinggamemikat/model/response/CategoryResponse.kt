@@ -2,11 +2,21 @@ package dinporapar.purbalinggamemikat.model.response
 
 import java.util.*
 
-data class CarouselResponse(
+data class CategoryResponse(
 
     val id: Long,
 
+    val name: String,
+
     val photo: String,
+
+    val slug: String,
+
+    val order: Int,
+
+    val isModule: Boolean?,
+
+    val moduleName: String?,
 
     val link: String?,
 

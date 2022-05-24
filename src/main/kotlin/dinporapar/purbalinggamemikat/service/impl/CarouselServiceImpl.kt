@@ -205,6 +205,7 @@ class CarouselServiceImpl (
             photo = carouselEntity.photo,
             link = carouselEntity.link,
             IsActive = carouselEntity.isActive,
+            isDeleted = carouselEntity.isDeleted,
             description = carouselEntity.description,
             createdAt = carouselEntity.createdAt,
             createdBy = carouselEntity.createdBy,
