@@ -1,9 +1,9 @@
 package dinporapar.purbalinggamemikat.controller
 
+import dinporapar.purbalinggamemikat.model.request.*
 import dinporapar.purbalinggamemikat.model.response.CarouselResponse
-import dinporapar.purbalinggamemikat.model.request.CreateCarouselRequest
-import dinporapar.purbalinggamemikat.model.request.ListCarouselRequest
 import dinporapar.purbalinggamemikat.model.response.WebResponse
+import dinporapar.purbalinggamemikat.model.response.pageable.ListResponse
 import dinporapar.purbalinggamemikat.service.CarouselService
 import org.apache.commons.io.IOUtils
 import org.springframework.http.HttpHeaders
@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.*
 import org.springframework.web.servlet.HandlerMapping
 import java.io.IOException
 import javax.servlet.http.HttpServletRequest
+import javax.validation.Valid
 
 @RestController
 @RequestMapping("/api/v1/carousels")
@@ -33,17 +34,31 @@ class CarouselController(val carouselService: CarouselService) {
         )
     }
 
+//    @GetMapping(
+//        produces = ["application/json"]
+//    )
+//    fun listCarousels(@RequestParam(value = "page", defaultValue = "0") page: Int,
+//                     @RequestParam(value = "size", defaultValue = "3") size: Int): WebResponse<List<CarouselResponse>> {
+//        val request = ListCarouselRequest(page,size)
+//        val response = carouselService.list2(request)
+//        return WebResponse(
+//            code = 200,
+//            status = "OK",
+//            data = response
+//        )
+//    }
     @GetMapping(
         produces = ["application/json"]
     )
-    fun listCarousels(@RequestParam(value = "page", defaultValue = "0") page: Int,
-                     @RequestParam(value = "size", defaultValue = "3") size: Int): WebResponse<List<CarouselResponse>> {
-        val request = ListCarouselRequest(page,size)
-        val response = carouselService.list(request)
+    fun listCarousels(
+    @Valid request: RequestParams,
+    @RequestParam filter: Map<String, String>
+    ): WebResponse<ListResponse<CarouselResponse>?> {
+        val responses = carouselService.list(request, filter)
         return WebResponse(
             code = 200,
             status = "OK",
-            data = response
+            data = responses
         )
     }
 
@@ -72,6 +87,37 @@ class CarouselController(val carouselService: CarouselService) {
         return WebResponse(
             200,
             "oke",
+            carouselResponse
+        )
+    }
+
+    @PatchMapping(
+        value = ["/{id}"],
+        produces = ["application/json"],
+        consumes = ["application/json", MediaType.MULTIPART_FORM_DATA_VALUE]
+    )
+    fun updateCarousel(@PathVariable("id") id: Long,
+                       updateCarouselRequest: UpdateCarouselRequest): WebResponse<CarouselResponse>{
+
+        val carouselResponse = carouselService.update(id, updateCarouselRequest)
+        return WebResponse(
+            200,
+            "OK",
+            carouselResponse
+        )
+    }
+
+    @DeleteMapping(
+        value = ["/{id}"],
+        produces = ["application/json"]
+    )
+    fun deleteCarousel(@PathVariable("id") id: Long,
+                deleteCarouselRequest: DeleteCarouselRequest): WebResponse<String>{
+
+        val carouselResponse = carouselService.delete(id, deleteCarouselRequest)
+        return WebResponse(
+            200,
+            "OK",
             carouselResponse
         )
     }

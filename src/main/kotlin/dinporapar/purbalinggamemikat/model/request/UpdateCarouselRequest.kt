@@ -1,24 +1,15 @@
 package dinporapar.purbalinggamemikat.model.request
 
 import org.springframework.web.multipart.MultipartFile
-import java.util.*
-import javax.validation.constraints.NotBlank
 import javax.validation.constraints.NotNull
 
-data class CreateCarouselRequest(
-
-//    @field:NotBlank
-//    val photo: String?,
-
+data class UpdateCarouselRequest (
     val link: String?,
 
     var description: String?,
 
     var isActive: Boolean?,
 
-    @field:NotNull
-    var createdBy: Int,
-
     @SuppressWarnings("java:S1948")
     var file: MultipartFile? = null
-        )
+)

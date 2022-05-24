@@ -2,7 +2,7 @@ package dinporapar.purbalinggamemikat.model.response
 
 import java.util.*
 
-data class CarouselResponse (
+data class CarouselResponse(
 
     val id: Long,
 
@@ -10,7 +10,7 @@ data class CarouselResponse (
 
     val link: String?,
 
-    val IsActive: Int,
+    val IsActive: Boolean?,
 
     val description: String?,
 

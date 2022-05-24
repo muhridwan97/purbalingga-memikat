@@ -57,8 +57,9 @@ Request:
 - Header :
   - Content-Type : application/json
 - Query Param :
-  - size : number,
-  - page : number
+  - size : number?,
+  - page : number?
+  - sortBy : string? = "created_at:ASC"
   
 Response:
 
@@ -67,17 +68,45 @@ Response:
   "code" : "number",
   "status" : "string",
   "data" : {
-    "id" : "integer, unique",
-    "photo" : "string",
-    "link" : "string?",
-    "description" : "string?",
-    "is_active" : "integer",
-    "created_at" : "date",
-    "updated_at" : "date",
-    "deleted_at" : "date",
-    "created_by" : "integer",
-    "updated_by" : "integer",
-    "deleted_by" : "integer"
+    "items": [
+      {
+        "id" : "integer, unique",
+        "photo" : "string",
+        "link" : "string?",
+        "description" : "string?",
+        "is_active" : "integer",
+        "created_at" : "date",
+        "updated_at" : "date",
+        "deleted_at" : "date",
+        "created_by" : "integer",
+        "updated_by" : "integer",
+        "deleted_by" : "integer"
+      },
+      {
+        "id" : "integer, unique",
+        "photo" : "string",
+        "link" : "string?",
+        "description" : "string?",
+        "is_active" : "integer",
+        "created_at" : "date",
+        "updated_at" : "date",
+        "deleted_at" : "date",
+        "created_by" : "integer",
+        "updated_by" : "integer",
+        "deleted_by" : "integer"
+      }
+    ],
+    "paging": {
+      "item_per_page": 10,
+      "page": 0,
+      "total_item": 3,
+      "total_page": 1
+    },
+    "sorting": {
+      "key": "created_at",
+      "direction": "ASC"
+    }
+        
   }
 }
 ```
@@ -116,7 +145,7 @@ Response:
 
 Request:
 - Method : PATCH
-- Endpoint : `/api/carousels/{id_carousel}`
+- Endpoint : `/api/v1/carousels/{id_carousel}`
 - Header :
     - Content-Type : application/json
     - Accept : application/json
@@ -153,57 +182,12 @@ Response:
   }
 }
 ```
-## List Carousel
 
-Request:
-- Method : GET
-- Endpoint : `/api/carousels`
-- Header :
-    - Accept : application/json
-- Query Param :
-    - size : number,
-    - page : number
-
-Response:
-
-```json
-{
-  "code" : "number",
-  "status" : "string",
-  "data" : [
-    {
-      "id" : "integer, unique",
-      "photo" : "string",
-      "link" : "string",
-      "description" : "string",
-      "is_active" : "integer",
-      "created_at" : "date",
-      "updated_at" : "date",
-      "deleted_at" : "date",
-      "created_by" : "integer",
-      "updated_by" : "integer",
-      "deleted_by" : "integer"
-    },{
-      "id" : "integer, unique",
-      "photo" : "string",
-      "link" : "string",
-      "description" : "string",
-      "is_active" : "integer",
-      "created_at" : "date",
-      "updated_at" : "date",
-      "deleted_at" : "date",
-      "created_by" : "integer",
-      "updated_by" : "integer",
-      "deleted_by" : "integer"
-    }
-  ]
-}
-```
 ## Delete Carousel
 
 Request:
 - Method : DELETE
-- Endpoint : `/api/carousel/{id_carousel}`
+- Endpoint : `/api/v1/carousel/{id_carousel}`
 - Header :
     - Accept : application/json
 
@@ -211,6 +195,7 @@ Request:
 
 ```json
 {
+  "softDelete" : "Boolean?=true)",
   "deleted_by" : "integer"
 }
 ```
@@ -220,7 +205,8 @@ Response:
 ```json
 {
   "code" : "number",
-  "status" : "string"
+  "status" : "string",
+  "data" : "string"
 }
 ```
 

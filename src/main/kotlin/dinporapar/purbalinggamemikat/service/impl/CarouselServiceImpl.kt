@@ -1,13 +1,18 @@
 package dinporapar.purbalinggamemikat.service.impl
 
-import dinporapar.purbalinggamemikat.entity.Carousel
+import dinporapar.purbalinggamemikat.entity.CarouselEntity
+import dinporapar.purbalinggamemikat.error.DeleteCarouselException
 import dinporapar.purbalinggamemikat.error.NotFoundException
 import dinporapar.purbalinggamemikat.error.UploadException
+import dinporapar.purbalinggamemikat.model.request.*
 import dinporapar.purbalinggamemikat.model.response.CarouselResponse
-import dinporapar.purbalinggamemikat.model.request.CreateCarouselRequest
-import dinporapar.purbalinggamemikat.model.request.ListCarouselRequest
+import dinporapar.purbalinggamemikat.model.response.pageable.ListResponse
+import dinporapar.purbalinggamemikat.model.response.pageable.PagingResponse
 import dinporapar.purbalinggamemikat.repository.CarouselRepository
 import dinporapar.purbalinggamemikat.service.CarouselService
+import dinporapar.purbalinggamemikat.specification.FilterMapper
+import dinporapar.purbalinggamemikat.specification.FilterRequestUtil
+import dinporapar.purbalinggamemikat.specification.FilterSpecification
 import dinporapar.purbalinggamemikat.validation.ValidationUtil
 import io.minio.GetObjectArgs
 import io.minio.MinioClient
@@ -15,6 +20,7 @@ import io.minio.PutObjectArgs
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.data.domain.PageRequest
+import org.springframework.data.jpa.domain.Specification
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 import java.io.InputStream
@@ -24,7 +30,10 @@ import java.util.stream.Collectors
 @Service
 class CarouselServiceImpl (
     val carouselRepository: CarouselRepository,
-    val validationUtil: ValidationUtil
+    val validationUtil: ValidationUtil,
+    val filterRequestUtil: FilterRequestUtil,
+    private val specification: FilterSpecification<CarouselEntity>
+
 )  : CarouselService {
 
     @Autowired
@@ -36,15 +45,8 @@ class CarouselServiceImpl (
     override fun create(createCarouselRequest: CreateCarouselRequest): CarouselResponse {
         validationUtil.validate(createCarouselRequest)
 
-        var fileName = createCarouselRequest.file!!.originalFilename!!?:"attachment"
+        var fileName = Date().time.toString()+"_"+createCarouselRequest.file!!.originalFilename!!?:"attachment"
         if (createCarouselRequest.file !== null) {
-//            var extension = createCarouselRequest.file!!.contentType!!.substringAfterLast("/")
-//
-//            if(extension.isEmpty()){
-//                extension = ".png"
-//            }else{
-//                extension = "."+extension
-//            }
             try {
                 minioClient.putObject(
                     PutObjectArgs.builder()
@@ -60,11 +62,11 @@ class CarouselServiceImpl (
             }
         }
 
-        val carousel = Carousel(
+        val carouselEntity = CarouselEntity(
             id = Long.MIN_VALUE,
             photo = fileName,
             link = createCarouselRequest.link!!,
-            isActive = createCarouselRequest.isActive?:1,
+            isActive = createCarouselRequest.isActive!!,
             description = createCarouselRequest.description!!,
             createdBy = createCarouselRequest.createdBy?:1,
             createdAt = Date(),
@@ -79,19 +81,50 @@ class CarouselServiceImpl (
             throw IllegalArgumentException("Product with id ${Long.MIN_VALUE} already exist")
         }
 
-        carouselRepository.save(carousel)
+        carouselRepository.save(carouselEntity)
 
-        return convertCarouselToCarouselResponse(carousel)
+        return convertCarouselToCarouselResponse(carouselEntity)
     }
 
-    override fun list(listCarouselRequest: ListCarouselRequest): List<CarouselResponse> {
+    override fun list2(listCarouselRequest: ListCarouselRequest): List<CarouselResponse> {
         val page = carouselRepository.findAll(PageRequest.of(listCarouselRequest.page, listCarouselRequest.size))
-        val carousel:List<Carousel> = page.get().collect(Collectors.toList())
+        val carouselEntity: List<CarouselEntity> = page.get().collect(Collectors.toList())
 
-        carousel.forEach{
-            it.photo = "http://10.6.2.15:8080/api/v1/carousels/attachment/" +it.photo
+        carouselEntity.forEach {
+            it.photo = "http://10.6.2.24:8080/api/v1/carousels/attachment/" + it.photo
         }
-        return carousel.map { convertCarouselToCarouselResponse(it) }
+        return carouselEntity.map { convertCarouselToCarouselResponse(it) }
+    }
+
+    override fun list(requestParams: RequestParams, filter: Map<String, String>): ListResponse<CarouselResponse> {
+        val size = if (requestParams.size!! == -1) {
+            Integer.MAX_VALUE
+        } else {
+            requestParams.size
+        }
+
+        val pageable = PageRequest.of(
+            requestParams.page!!,
+            size,
+            filterRequestUtil.toSortBy(requestParams.sortBy!!)
+        )
+
+        val list = carouselRepository.findAll(generateFilter(filter), pageable)
+
+        val items: List<CarouselEntity> = list.get().collect(Collectors.toList())
+        items.forEach {
+            it.photo = "http://10.6.2.24:8080/api/v1/carousels/attachment/" + it.photo
+        }
+        return ListResponse(
+            items = items.map { convertCarouselToCarouselResponse(it) },
+            paging = PagingResponse(
+                item_per_page = list.size,
+                page = list.number,
+                total_item = list.totalElements,
+                total_page = list.totalPages
+            ),
+            sorting = filterRequestUtil.toSortResponse(requestParams.sortBy)
+        )
     }
 
     override fun getObject(filename: String): InputStream? {
@@ -114,29 +147,86 @@ class CarouselServiceImpl (
         return convertCarouselToCarouselResponse(carousel)
     }
 
-    private fun convertCarouselToCarouselResponse(carousel: Carousel): CarouselResponse {
+    override fun update(id: Long, updateCarouselRequest: UpdateCarouselRequest): CarouselResponse {
+        val carousel = findCarouselByIdOrThrowNotFound(id)
+        validationUtil.validate(carousel)
+        var fileName = Date().time.toString()+"_"+updateCarouselRequest.file!!.originalFilename!!?:"attachment"
+        if (updateCarouselRequest.file !== null) {
+
+            try {
+                minioClient.putObject(
+                    PutObjectArgs.builder()
+                        .bucket(bucketName)
+                        .`object`("/foto/" + fileName)
+                        .stream(updateCarouselRequest.file!!.inputStream, updateCarouselRequest.file!!.size, -1)
+                        .contentType(updateCarouselRequest.file!!.contentType)
+                        .build()
+                )
+            } catch (e: Exception) {
+                println("error -> $e")
+                throw UploadException()
+            }
+        }
+        carousel.apply {
+            photo = fileName!!
+            link = updateCarouselRequest.link!!
+            description = updateCarouselRequest.description!!
+            isActive = updateCarouselRequest.isActive!!
+            updatedAt = Date()
+        }
+        carouselRepository.save(carousel)
+        return convertCarouselToCarouselResponse(carousel)
+    }
+
+    override fun delete(id: Long, deleteCarouselRequest: DeleteCarouselRequest): String {
+        val carousel = findCarouselByIdOrThrowNotFound(id)
+
+        try {
+            if(deleteCarouselRequest.softDelete == true || deleteCarouselRequest.softDelete == null){
+                carousel.apply {
+                    isDeleted = true
+                    deletedBy = 1
+                    deletedAt = Date()
+                }
+                carouselRepository.save(carousel)
+            }else{
+                carouselRepository.delete(carousel)
+            }
+        } catch (e: Exception) {
+            println("error -> $e")
+            throw DeleteCarouselException()
+        }
+        return "Delete Successfully"
+    }
+
+    private fun convertCarouselToCarouselResponse(carouselEntity: CarouselEntity): CarouselResponse {
         return CarouselResponse(
-            id = carousel.id,
-            photo = carousel.photo,
-            link = carousel.link,
-            IsActive = carousel.isActive,
-            description = carousel.description,
-            createdAt = carousel.createdAt,
-            createdBy = carousel.createdBy,
-            updatedAt = carousel.updatedAt,
-            updatedBy = carousel.updatedBy,
-            deletedAt = carousel.deletedAt,
-            deletedBy = carousel.deletedBy,
+            id = carouselEntity.id,
+            photo = carouselEntity.photo,
+            link = carouselEntity.link,
+            IsActive = carouselEntity.isActive,
+            description = carouselEntity.description,
+            createdAt = carouselEntity.createdAt,
+            createdBy = carouselEntity.createdBy,
+            updatedAt = carouselEntity.updatedAt,
+            updatedBy = carouselEntity.updatedBy,
+            deletedAt = carouselEntity.deletedAt,
+            deletedBy = carouselEntity.deletedBy,
         )
     }
 
-    private fun findCarouselByIdOrThrowNotFound(id: Long): Carousel{
+    private fun findCarouselByIdOrThrowNotFound(id: Long): CarouselEntity{
         val carousel = carouselRepository.findByIdOrNull(id)
         if (carousel == null){
             throw NotFoundException()
         }else{
             return carousel
         }
+    }
+    private fun generateFilter(filter: Map<String, String>): Specification<CarouselEntity>? {
+        val options: MutableList<FilterMapper> = mutableListOf()
+        val filters = filterRequestUtil.toFilterCriteria(filter, options)
+        return specification.buildPredicate(filters)
     }
 
 }
