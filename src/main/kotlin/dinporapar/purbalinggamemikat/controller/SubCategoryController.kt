@@ -1,11 +1,14 @@
 package dinporapar.purbalinggamemikat.controller
 
-import dinporapar.purbalinggamemikat.model.request.*
-import dinporapar.purbalinggamemikat.model.response.CarouselResponse
+import dinporapar.purbalinggamemikat.model.request.CreateSubCategoryRequest
+import dinporapar.purbalinggamemikat.model.request.RequestParams
+import dinporapar.purbalinggamemikat.model.request.UpdateCategoryRequest
+import dinporapar.purbalinggamemikat.model.request.UpdateSubCategoryRequest
 import dinporapar.purbalinggamemikat.model.response.CategoryResponse
+import dinporapar.purbalinggamemikat.model.response.SubCategoryResponse
 import dinporapar.purbalinggamemikat.model.response.WebResponse
 import dinporapar.purbalinggamemikat.model.response.pageable.ListResponse
-import dinporapar.purbalinggamemikat.service.CategoryService
+import dinporapar.purbalinggamemikat.service.SubCategoryService
 import org.apache.commons.io.IOUtils
 import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
@@ -17,16 +20,17 @@ import java.io.IOException
 import javax.servlet.http.HttpServletRequest
 import javax.validation.Valid
 
+
 @RestController
-@RequestMapping("/api/v1/categories")
-class CategoryController (val categoryService: CategoryService) {
+@RequestMapping("/api/v1/subCategories")
+class SubCategoryController (val subCategoryService: SubCategoryService){
 
     @PostMapping(
         produces = ["application/json"],
-        consumes = [MediaType.MULTIPART_FORM_DATA_VALUE]
+        consumes = [MediaType.MULTIPART_FORM_DATA_VALUE , MediaType.APPLICATION_JSON_VALUE]
     )
-    fun createCategory(@ModelAttribute body: CreateCategoryRequest) : WebResponse<CategoryResponse> {
-        val response = categoryService.create(body)
+    fun createSubCategory(@ModelAttribute body: CreateSubCategoryRequest) : WebResponse<SubCategoryResponse> {
+        val response = subCategoryService.create(body)
 
         return WebResponse(
             code = 200,
@@ -38,11 +42,11 @@ class CategoryController (val categoryService: CategoryService) {
     @GetMapping(
         produces = ["application/json"]
     )
-    fun listCategories(
+    fun listSubCategories(
         @Valid request: RequestParams,
         @RequestParam filter: Map<String, String>
-    ): WebResponse<ListResponse<CategoryResponse>?> {
-        val responses = categoryService.list(request, filter)
+    ): WebResponse<ListResponse<SubCategoryResponse>?> {
+        val responses = subCategoryService.list(request, filter)
         return WebResponse(
             code = 200,
             status = "OK",
@@ -63,15 +67,15 @@ class CategoryController (val categoryService: CategoryService) {
         return ResponseEntity.ok()
             .headers(header)
             .contentType(MediaType.APPLICATION_OCTET_STREAM)
-            .body(IOUtils.toByteArray(categoryService.getObject(filename)))
+            .body(IOUtils.toByteArray(subCategoryService.getObject(filename)))
     }
 
     @GetMapping(
         value = ["/{id}"],
         produces = ["application/json"]
     )
-    fun getCategory(@PathVariable("id") id : Long) : WebResponse<CategoryResponse>{
-        val response = categoryService.get(id)
+    fun getSubCategory(@PathVariable("id") id : Long) : WebResponse<SubCategoryResponse>{
+        val response = subCategoryService.get(id)
         return WebResponse(
             200,
             "oke",
@@ -82,29 +86,13 @@ class CategoryController (val categoryService: CategoryService) {
     @PatchMapping(
         value = ["/{id}"],
         produces = ["application/json"],
-        consumes = ["application/json", MediaType.MULTIPART_FORM_DATA_VALUE]
+        consumes = [MediaType.MULTIPART_FORM_DATA_VALUE, MediaType.APPLICATION_JSON_VALUE]
     )
-    fun updateCategory(@PathVariable("id") id: Long,
-                       updateCategoryRequest: UpdateCategoryRequest
-    ): WebResponse<CategoryResponse>{
+    fun updateSubCategory(@PathVariable("id") id: Long,
+                          @ModelAttribute updateSubCategoryRequest: UpdateSubCategoryRequest
+    ): WebResponse<SubCategoryResponse>{
 
-        val categoryResponse = categoryService.update(id, updateCategoryRequest)
-        return WebResponse(
-            200,
-            "OK",
-            categoryResponse
-        )
-    }
-
-    @DeleteMapping(
-        value = ["/{id}"],
-        produces = ["application/json"]
-    )
-    fun deleteCategory(@PathVariable("id") id: Long,
-                       deleteCategoryRequest: DeleteCategoryRequest
-    ): WebResponse<String>{
-
-        val categoryResponse = categoryService.delete(id, deleteCategoryRequest)
+        val categoryResponse = subCategoryService.update(id, updateSubCategoryRequest)
         return WebResponse(
             200,
             "OK",

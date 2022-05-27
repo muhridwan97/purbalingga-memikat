@@ -42,8 +42,8 @@ class ErrorController {
     fun handledBadRequest(e: IllegalArgumentException): ResponseEntity<String> =
         ResponseEntity(e.message, HttpStatus.BAD_REQUEST)
 
-    @ExceptionHandler(value = [DeleteCarouselException::class])
-    fun deleteCarouselFile(deleteCarouselException: DeleteCarouselException):WebResponse<String>{
+    @ExceptionHandler(value = [DeleteDataException::class])
+    fun deleteData(deleteDataException: DeleteDataException):WebResponse<String>{
         return WebResponse(
             code = 400,
             status = "BAD REQUEST",
@@ -68,4 +68,5 @@ class ErrorController {
             data = "Must use valid operator for filter."
         )
     }
+
 }

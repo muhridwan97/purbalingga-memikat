@@ -1,7 +1,7 @@
 package dinporapar.purbalinggamemikat.service.impl
 
 import dinporapar.purbalinggamemikat.entity.CarouselEntity
-import dinporapar.purbalinggamemikat.error.DeleteCarouselException
+import dinporapar.purbalinggamemikat.error.DeleteDataException
 import dinporapar.purbalinggamemikat.error.NotFoundException
 import dinporapar.purbalinggamemikat.error.UploadException
 import dinporapar.purbalinggamemikat.model.request.*
@@ -27,6 +27,7 @@ import java.io.InputStream
 import java.util.*
 import java.util.stream.Collectors
 
+
 @Service
 class CarouselServiceImpl (
     val carouselRepository: CarouselRepository,
@@ -42,11 +43,21 @@ class CarouselServiceImpl (
     @Value("\${minio.bucket.name}")
     lateinit var bucketName: String
 
+    @Value("\${tes.ip}")
+    lateinit var ipTes: String
+
     override fun create(createCarouselRequest: CreateCarouselRequest): CarouselResponse {
         validationUtil.validate(createCarouselRequest)
+        var extension = createCarouselRequest.file!!.contentType!!.substringAfterLast("/")
 
-        var fileName = Date().time.toString()+"_"+createCarouselRequest.file!!.originalFilename!!?:"attachment"
+        if(extension.isEmpty()){
+            extension = ".png"
+        }else{
+            extension = "."+extension
+        }
+        var fileName = ""
         if (createCarouselRequest.file !== null) {
+            fileName = Date().time.toString()+extension
             try {
                 minioClient.putObject(
                     PutObjectArgs.builder()
@@ -91,7 +102,7 @@ class CarouselServiceImpl (
         val carouselEntity: List<CarouselEntity> = page.get().collect(Collectors.toList())
 
         carouselEntity.forEach {
-            it.photo = "http://10.6.2.24:8080/api/v1/carousels/attachment/" + it.photo
+            it.photo = ipTes+"/api/v1/carousels/attachment/" + it.photo
         }
         return carouselEntity.map { convertCarouselToCarouselResponse(it) }
     }
@@ -113,7 +124,7 @@ class CarouselServiceImpl (
 
         val items: List<CarouselEntity> = list.get().collect(Collectors.toList())
         items.forEach {
-            it.photo = "http://10.6.2.24:8080/api/v1/carousels/attachment/" + it.photo
+            it.photo = ipTes+"/api/v1/carousels/attachment/" + it.photo
         }
         return ListResponse(
             items = items.map { convertCarouselToCarouselResponse(it) },
@@ -150,9 +161,16 @@ class CarouselServiceImpl (
     override fun update(id: Long, updateCarouselRequest: UpdateCarouselRequest): CarouselResponse {
         val carousel = findCarouselByIdOrThrowNotFound(id)
         validationUtil.validate(carousel)
-        var fileName = Date().time.toString()+"_"+updateCarouselRequest.file!!.originalFilename!!?:"attachment"
-        if (updateCarouselRequest.file !== null) {
+        var extension = updateCarouselRequest.file!!.contentType!!.substringAfterLast("/")
 
+        if(extension.isEmpty()){
+            extension = ".png"
+        }else{
+            extension = "."+extension
+        }
+        var fileName = ""
+        if (updateCarouselRequest.file !== null) {
+            fileName = Date().time.toString()+extension
             try {
                 minioClient.putObject(
                     PutObjectArgs.builder()
@@ -194,7 +212,7 @@ class CarouselServiceImpl (
             }
         } catch (e: Exception) {
             println("error -> $e")
-            throw DeleteCarouselException()
+            throw DeleteDataException()
         }
         return "Delete Successfully"
     }

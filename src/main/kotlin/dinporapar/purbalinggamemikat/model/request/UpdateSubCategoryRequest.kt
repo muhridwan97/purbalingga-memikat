@@ -5,26 +5,21 @@ import javax.validation.constraints.Min
 import javax.validation.constraints.NotBlank
 import javax.validation.constraints.NotNull
 
-data class CreateCategoryRequest (
+data class UpdateSubCategoryRequest (
+    @field:NotNull
+    var categoryId: Long?,
+
     @field:NotBlank
     var name: String?,
 
     @field:NotBlank
     var slug : String?,
 
-    var link: String?= "",
-
     var description: String? = "",
-
-    var isActive: Boolean? = true,
-
-    var isModule : Boolean? = false,
-
-    var moduleName : String? = "",
 
     @field:NotNull
     @field:Min(value = 0)
-    var createdBy: Int,
+    val updatedBy: Int? = 0,
 
     @SuppressWarnings("java:S1948")
     var file: MultipartFile? = null

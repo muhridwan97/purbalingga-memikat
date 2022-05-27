@@ -1,12 +1,13 @@
 package dinporapar.purbalinggamemikat.service.impl
 
-import dinporapar.purbalinggamemikat.entity.CarouselEntity
 import dinporapar.purbalinggamemikat.entity.CategoryEntity
+import dinporapar.purbalinggamemikat.error.DeleteDataException
 import dinporapar.purbalinggamemikat.error.NotFoundException
 import dinporapar.purbalinggamemikat.error.UploadException
 import dinporapar.purbalinggamemikat.model.request.CreateCategoryRequest
+import dinporapar.purbalinggamemikat.model.request.DeleteCategoryRequest
 import dinporapar.purbalinggamemikat.model.request.RequestParams
-import dinporapar.purbalinggamemikat.model.response.CarouselResponse
+import dinporapar.purbalinggamemikat.model.request.UpdateCategoryRequest
 import dinporapar.purbalinggamemikat.model.response.CategoryResponse
 import dinporapar.purbalinggamemikat.model.response.pageable.ListResponse
 import dinporapar.purbalinggamemikat.model.response.pageable.PagingResponse
@@ -44,11 +45,21 @@ class CategoryServiceImpl (
     @Value("\${minio.bucket.name}")
     lateinit var bucketName: String
 
+    @Value("\${tes.ip}")
+    lateinit var ipTes: String
+
     override fun create(createCategoryRequest: CreateCategoryRequest): CategoryResponse {
         validationUtil.validate(createCategoryRequest)
-        var fileName = "attachment"
+        var extension = createCategoryRequest.file!!.contentType!!.substringAfterLast("/")
+
+        if(extension.isEmpty()){
+            extension = ".png"
+        }else{
+            extension = "."+extension
+        }
+        var fileName = ""
         if (createCategoryRequest.file !== null) {
-            fileName = Date().time.toString()+"_"+createCategoryRequest.file!!.originalFilename!!
+            fileName = Date().time.toString()+extension
             try {
                 minioClient.putObject(
                     PutObjectArgs.builder()
@@ -62,8 +73,6 @@ class CategoryServiceImpl (
                 println("error -> $e")
                 throw UploadException()
             }
-        }else{
-            fileName=""
         }
 
         var lastOrder = categoryRepository.getLastOrder()
@@ -114,6 +123,10 @@ class CategoryServiceImpl (
         val list = categoryRepository.findAll(generateFilter(filter), pageable)
 
         val items: List<CategoryEntity> = list.get().collect(Collectors.toList())
+        items.forEach {
+            it.photo = ipTes+"/api/v1/categories/attachment/" + it.photo
+        }
+
         return ListResponse(
             items = items.map { convertResponse(it) },
             paging = PagingResponse(
@@ -139,6 +152,76 @@ class CategoryServiceImpl (
             return null
         }
         return stream
+    }
+
+    override fun get(id: Long): CategoryResponse {
+        val response = findCategoryByIdOrThrowNotFound(id)
+        return convertResponse(response)
+    }
+
+    override fun update(id: Long, updateCategoryRequest: UpdateCategoryRequest): CategoryResponse {
+        val category = findCategoryByIdOrThrowNotFound(id)
+        validationUtil.validate(category)
+        var extension = updateCategoryRequest.file!!.contentType!!.substringAfterLast("/")
+
+        if(extension.isEmpty()){
+            extension = ".png"
+        }else{
+            extension = "."+extension
+        }
+        var fileName = ""
+        if (updateCategoryRequest.file !== null) {
+            fileName = Date().time.toString()+extension
+            try {
+                minioClient.putObject(
+                    PutObjectArgs.builder()
+                        .bucket(bucketName)
+                        .`object`("/category/" + fileName)
+                        .stream(updateCategoryRequest.file!!.inputStream, updateCategoryRequest.file!!.size, -1)
+                        .contentType(updateCategoryRequest.file!!.contentType)
+                        .build()
+                )
+            } catch (e: Exception) {
+                println("error -> $e")
+                throw UploadException()
+            }
+        }
+        category.apply {
+            name = updateCategoryRequest.name!!
+            slug = updateCategoryRequest.slug!!
+            order = updateCategoryRequest.order!!
+            isModule = updateCategoryRequest.isModule!!
+            moduleName = updateCategoryRequest.moduleName!!
+            photo = fileName!!
+            link = updateCategoryRequest.link!!
+            description = updateCategoryRequest.description!!
+            isActive = updateCategoryRequest.isActive!!
+            updatedBy = updateCategoryRequest.updatedBy!!
+            updatedAt = Date()
+        }
+        categoryRepository.save(category)
+        return convertResponse(category)
+    }
+
+    override fun delete(id: Long, deleteCategoryRequest: DeleteCategoryRequest): String {
+        val category = findCategoryByIdOrThrowNotFound(id)
+
+        try {
+            if(deleteCategoryRequest.softDelete == true || deleteCategoryRequest.softDelete == null){
+                category.apply {
+                    isDeleted = true
+                    deletedBy = 1
+                    deletedAt = Date()
+                }
+                categoryRepository.save(category)
+            }else{
+                categoryRepository.delete(category)
+            }
+        } catch (e: Exception) {
+            println("error -> $e")
+            throw DeleteDataException()
+        }
+        return "Delete Successfully"
     }
 
     private fun convertResponse(categoryEntity: CategoryEntity): CategoryResponse {

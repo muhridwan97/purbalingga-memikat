@@ -30,6 +30,7 @@ dependencies {
 	implementation("io.minio:minio:8.3.5")
 	implementation("com.squareup.okhttp3:okhttp:4.9.1")
 	implementation("commons-io:commons-io:2.11.0")
+	implementation("org.springframework.boot:spring-boot-starter-thymeleaf")
 }
 
 tasks.withType<KotlinCompile> {

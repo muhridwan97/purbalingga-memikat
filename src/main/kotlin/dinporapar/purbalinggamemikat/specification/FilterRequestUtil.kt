@@ -1,5 +1,6 @@
 package dinporapar.purbalinggamemikat.specification
 
+
 import com.google.common.base.CaseFormat
 import dinporapar.purbalinggamemikat.error.FilterOperatorExecption
 import dinporapar.purbalinggamemikat.model.response.pageable.SortingResponse

@@ -5,8 +5,24 @@ services:
     container_name: "purbalingga-memikat"
     image: postgres
     ports:
-      - 5454:5432
+      - 5432:5432
     environment:
       POSTGRES_PASSWORD: root
       POSTGRES_USER: postgres
       POSTGRES_DB: purbalingga-memikat
+    networks:
+      - memikat
+  api:
+    build: .
+    restart: always
+    container_name: "api-purbalingga-memikat"
+    ports:
+      - '8081:8080'
+    depends_on:
+      - purbalingga-memikat
+    networks:
+      - memikat
+
+networks:
+  memikat:
+    external: true
