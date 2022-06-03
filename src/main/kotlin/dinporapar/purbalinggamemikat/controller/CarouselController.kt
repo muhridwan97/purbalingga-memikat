@@ -24,7 +24,7 @@ class CarouselController(val carouselService: CarouselService) {
         produces = ["application/json"],
         consumes = [MediaType.MULTIPART_FORM_DATA_VALUE]
     )
-    fun createCarousel(body: CreateCarouselRequest) : WebResponse<CarouselResponse> {
+    fun createCarousel(@ModelAttribute body: CreateCarouselRequest) : WebResponse<CarouselResponse> {
         val carouselResponse = carouselService.create(body)
 
         return WebResponse(

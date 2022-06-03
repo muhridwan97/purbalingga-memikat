@@ -8,7 +8,7 @@ data class UpdateCarouselRequest (
 
     var description: String?,
 
-    var isActive: Boolean?,
+    var isActive: Boolean?= true,
 
     @SuppressWarnings("java:S1948")
     var file: MultipartFile? = null

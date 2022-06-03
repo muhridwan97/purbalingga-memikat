@@ -20,6 +20,7 @@ import dinporapar.purbalinggamemikat.validation.ValidationUtil
 import io.minio.GetObjectArgs
 import io.minio.MinioClient
 import io.minio.PutObjectArgs
+import io.minio.RemoveObjectArgs
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.data.domain.PageRequest
@@ -50,15 +51,15 @@ class CategoryServiceImpl (
 
     override fun create(createCategoryRequest: CreateCategoryRequest): CategoryResponse {
         validationUtil.validate(createCategoryRequest)
-        var extension = createCategoryRequest.file!!.contentType!!.substringAfterLast("/")
-
-        if(extension.isEmpty()){
-            extension = ".png"
-        }else{
-            extension = "."+extension
-        }
         var fileName = ""
         if (createCategoryRequest.file !== null) {
+            var extension = createCategoryRequest.file!!.contentType!!.substringAfterLast("/")
+
+            if(extension.isEmpty()){
+                extension = ".png"
+            }else{
+                extension = "."+extension
+            }
             fileName = Date().time.toString()+extension
             try {
                 minioClient.putObject(
@@ -102,9 +103,28 @@ class CategoryServiceImpl (
         )
 
 
-        categoryRepository.save(carouselEntity)
+        var eny = categoryRepository.save(carouselEntity)
 
-        return convertResponse(carouselEntity)
+        val afterInsert = CategoryEntity(
+            id = eny.id,
+            name = eny.name!!,
+            slug = eny.slug!!,
+            photo = fileName,
+            order = lastOrder,
+            link = eny.link!!,
+            isActive = eny.isActive!!,
+            isModule = eny.isModule!!,
+            moduleName = eny.moduleName!!,
+            description = eny.description!!,
+            createdBy = eny.createdBy!!,
+            createdAt = eny.createdAt,
+            updatedAt = null,
+            updatedBy = null,
+            deletedAt = null,
+            deletedBy = null
+        )
+
+        return convertResponse(afterInsert)
     }
 
     override fun list(requestParams: RequestParams, filter: Map<String, String>): ListResponse<CategoryResponse> {
@@ -124,7 +144,9 @@ class CategoryServiceImpl (
 
         val items: List<CategoryEntity> = list.get().collect(Collectors.toList())
         items.forEach {
-            it.photo = ipTes+"/api/v1/categories/attachment/" + it.photo
+            if(!it.photo.isEmpty()) {
+                it.photo = ipTes + "/api/v1/categories/attachment/" + it.photo
+            }
         }
 
         return ListResponse(
@@ -162,17 +184,27 @@ class CategoryServiceImpl (
     override fun update(id: Long, updateCategoryRequest: UpdateCategoryRequest): CategoryResponse {
         val category = findCategoryByIdOrThrowNotFound(id)
         validationUtil.validate(category)
-        var extension = updateCategoryRequest.file!!.contentType!!.substringAfterLast("/")
 
-        if(extension.isEmpty()){
-            extension = ".png"
-        }else{
-            extension = "."+extension
-        }
-        var fileName = ""
+        var fileName = category.photo
+
         if (updateCategoryRequest.file !== null) {
+            var extension = updateCategoryRequest.file!!.contentType!!.substringAfterLast("/")
+
+            if(extension.isEmpty()){
+                extension = ".png"
+            }else{
+                extension = "."+extension
+            }
             fileName = Date().time.toString()+extension
             try {
+
+                minioClient.removeObject(
+                    RemoveObjectArgs.builder()
+                        .bucket(bucketName)
+                        .`object`("/category/" + category.photo)
+                        .build()
+                )
+
                 minioClient.putObject(
                     PutObjectArgs.builder()
                         .bucket(bucketName)

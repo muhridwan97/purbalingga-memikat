@@ -1,9 +1,6 @@
 package dinporapar.purbalinggamemikat.controller
 
-import dinporapar.purbalinggamemikat.model.request.CreateSubCategoryRequest
-import dinporapar.purbalinggamemikat.model.request.RequestParams
-import dinporapar.purbalinggamemikat.model.request.UpdateCategoryRequest
-import dinporapar.purbalinggamemikat.model.request.UpdateSubCategoryRequest
+import dinporapar.purbalinggamemikat.model.request.*
 import dinporapar.purbalinggamemikat.model.response.CategoryResponse
 import dinporapar.purbalinggamemikat.model.response.SubCategoryResponse
 import dinporapar.purbalinggamemikat.model.response.WebResponse
@@ -17,6 +14,7 @@ import org.springframework.util.AntPathMatcher
 import org.springframework.web.bind.annotation.*
 import org.springframework.web.servlet.HandlerMapping
 import java.io.IOException
+import javax.annotation.security.RolesAllowed
 import javax.servlet.http.HttpServletRequest
 import javax.validation.Valid
 
@@ -39,6 +37,7 @@ class SubCategoryController (val subCategoryService: SubCategoryService){
         )
     }
 
+    @RolesAllowed("admin")
     @GetMapping(
         produces = ["application/json"]
     )
@@ -93,6 +92,22 @@ class SubCategoryController (val subCategoryService: SubCategoryService){
     ): WebResponse<SubCategoryResponse>{
 
         val categoryResponse = subCategoryService.update(id, updateSubCategoryRequest)
+        return WebResponse(
+            200,
+            "OK",
+            categoryResponse
+        )
+    }
+
+    @DeleteMapping(
+        value = ["/{id}"],
+        produces = ["application/json"]
+    )
+    fun deleteSubCategory(@PathVariable("id") id: Long,
+                       deleteSubCategoryRequest: DeleteSubCategoryRequest
+    ): WebResponse<String>{
+
+        val categoryResponse = subCategoryService.delete(id, deleteSubCategoryRequest)
         return WebResponse(
             200,
             "OK",

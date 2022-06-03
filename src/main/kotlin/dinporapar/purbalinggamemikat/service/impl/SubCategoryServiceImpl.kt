@@ -2,9 +2,11 @@ package dinporapar.purbalinggamemikat.service.impl
 
 import dinporapar.purbalinggamemikat.entity.CategoryEntity
 import dinporapar.purbalinggamemikat.entity.SubCategoryEntity
+import dinporapar.purbalinggamemikat.error.DeleteDataException
 import dinporapar.purbalinggamemikat.error.NotFoundException
 import dinporapar.purbalinggamemikat.error.UploadException
 import dinporapar.purbalinggamemikat.model.request.CreateSubCategoryRequest
+import dinporapar.purbalinggamemikat.model.request.DeleteSubCategoryRequest
 import dinporapar.purbalinggamemikat.model.request.RequestParams
 import dinporapar.purbalinggamemikat.model.request.UpdateSubCategoryRequest
 import dinporapar.purbalinggamemikat.model.response.SubCategoryResponse
@@ -21,6 +23,7 @@ import dinporapar.purbalinggamemikat.validation.ValidationUtil
 import io.minio.GetObjectArgs
 import io.minio.MinioClient
 import io.minio.PutObjectArgs
+import io.minio.RemoveObjectArgs
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.data.domain.PageRequest
@@ -52,15 +55,15 @@ class SubCategoryServiceImpl(
 
     override fun create(createSubCategoryRequest: CreateSubCategoryRequest): SubCategoryResponse {
         validationUtil.validate(createSubCategoryRequest)
-        var extension = createSubCategoryRequest.file!!.contentType!!.substringAfterLast("/")
-
-        if(extension.isEmpty()){
-            extension = ".png"
-        }else{
-            extension = "."+extension
-        }
         var fileName = ""
         if (createSubCategoryRequest.file !== null) {
+            var extension = createSubCategoryRequest.file!!.contentType!!.substringAfterLast("/")
+
+            if(extension.isEmpty()){
+                extension = ".png"
+            }else{
+                extension = "."+extension
+            }
             fileName = Date().time.toString()+extension
             try {
                 minioClient.putObject(
@@ -149,23 +152,33 @@ class SubCategoryServiceImpl(
 
     override fun get(id: Long): SubCategoryResponse {
         val response = findSubCategoryByIdOrThrowNotFound(id)
+        if(response.photo != null){
+            response.photo = ipTes + "/api/v1/subCategories/attachment/" + response.photo
+        }
         return convertToResponse(response)
     }
 
     override fun update(id: Long, updateSubCategoryRequest: UpdateSubCategoryRequest): SubCategoryResponse {
         val category = findSubCategoryByIdOrThrowNotFound(id)
         validationUtil.validate(category)
-        var extension = updateSubCategoryRequest.file!!.contentType!!.substringAfterLast("/")
-
-        if(extension.isEmpty()){
-            extension = ".png"
-        }else{
-            extension = "."+extension
-        }
         var fileName = ""
         if (updateSubCategoryRequest.file !== null) {
+            var extension = updateSubCategoryRequest.file!!.contentType!!.substringAfterLast("/")
+
+            if(extension.isEmpty()){
+                extension = ".png"
+            }else{
+                extension = "."+extension
+            }
             fileName = Date().time.toString()+extension
             try {
+                minioClient.removeObject(
+                    RemoveObjectArgs.builder()
+                        .bucket(bucketName)
+                        .`object`("/subCategory/" + category.photo)
+                        .build()
+                )
+
                 minioClient.putObject(
                     PutObjectArgs.builder()
                         .bucket(bucketName)
@@ -188,8 +201,29 @@ class SubCategoryServiceImpl(
             updatedBy = updateSubCategoryRequest.updatedBy!!
             updatedAt = Date()
         }
-        subCategoryRepository.save(category)
-        return convertToResponse(category)
+        val result = subCategoryRepository.save(category)
+        return convertToResponse(result)
+    }
+
+    override fun delete(id: Long, deleteSubCategoryRequest: DeleteSubCategoryRequest): String {
+        val category = findSubCategoryByIdOrThrowNotFound(id)
+
+        try {
+            if(deleteSubCategoryRequest.softDelete == true || deleteSubCategoryRequest.softDelete == null){
+                category.apply {
+                    isDeleted = true
+                    deletedBy = 1
+                    deletedAt = Date()
+                }
+                subCategoryRepository.save(category)
+            }else{
+                subCategoryRepository.delete(category)
+            }
+        } catch (e: Exception) {
+            println("error -> $e")
+            throw DeleteDataException()
+        }
+        return "Delete Successfully"
     }
 
     private fun convertToResponse(subCategoryEntity: SubCategoryEntity): SubCategoryResponse {
@@ -199,6 +233,7 @@ class SubCategoryServiceImpl(
 
         return SubCategoryResponse(
             id = subCategoryEntity.id,
+//            categoryId = subCategoryEntity.categoryId,
             name = subCategoryEntity.name,
             categoryName = subCategoryEntity.category!!.name,
             photo = subCategoryEntity.photo,
@@ -213,6 +248,7 @@ class SubCategoryServiceImpl(
 
     private fun generateFilter(filter: Map<String, String>): Specification<SubCategoryEntity>? {
         val options: MutableList<FilterMapper> = mutableListOf()
+        options.add(FilterMapper("category_name", "category.name"))
         val filters = filterRequestUtil.toFilterCriteria(filter, options)
         return specification.buildPredicate(filters)
     }

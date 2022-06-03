@@ -17,6 +17,7 @@ import dinporapar.purbalinggamemikat.validation.ValidationUtil
 import io.minio.GetObjectArgs
 import io.minio.MinioClient
 import io.minio.PutObjectArgs
+import io.minio.RemoveObjectArgs
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.data.domain.PageRequest
@@ -48,15 +49,15 @@ class CarouselServiceImpl (
 
     override fun create(createCarouselRequest: CreateCarouselRequest): CarouselResponse {
         validationUtil.validate(createCarouselRequest)
-        var extension = createCarouselRequest.file!!.contentType!!.substringAfterLast("/")
-
-        if(extension.isEmpty()){
-            extension = ".png"
-        }else{
-            extension = "."+extension
-        }
         var fileName = ""
         if (createCarouselRequest.file !== null) {
+            var extension = createCarouselRequest.file!!.contentType!!.substringAfterLast("/")
+
+            if(extension.isEmpty()){
+                extension = ".png"
+            }else{
+                extension = "."+extension
+            }
             fileName = Date().time.toString()+extension
             try {
                 minioClient.putObject(
@@ -87,14 +88,9 @@ class CarouselServiceImpl (
             deletedBy = null
         )
 
-        val idExist = carouselRepository.findByIdOrNull(Long.MIN_VALUE)
-        if (idExist != null){
-            throw IllegalArgumentException("Product with id ${Long.MIN_VALUE} already exist")
-        }
+        val result = carouselRepository.save(carouselEntity)
 
-        carouselRepository.save(carouselEntity)
-
-        return convertCarouselToCarouselResponse(carouselEntity)
+        return convertCarouselToCarouselResponse(result)
     }
 
     override fun list2(listCarouselRequest: ListCarouselRequest): List<CarouselResponse> {
@@ -124,7 +120,9 @@ class CarouselServiceImpl (
 
         val items: List<CarouselEntity> = list.get().collect(Collectors.toList())
         items.forEach {
-            it.photo = ipTes+"/api/v1/carousels/attachment/" + it.photo
+            if(!it.photo.isEmpty()){
+                it.photo = ipTes+"/api/v1/carousels/attachment/" + it.photo
+            }
         }
         return ListResponse(
             items = items.map { convertCarouselToCarouselResponse(it) },
@@ -161,17 +159,23 @@ class CarouselServiceImpl (
     override fun update(id: Long, updateCarouselRequest: UpdateCarouselRequest): CarouselResponse {
         val carousel = findCarouselByIdOrThrowNotFound(id)
         validationUtil.validate(carousel)
-        var extension = updateCarouselRequest.file!!.contentType!!.substringAfterLast("/")
-
-        if(extension.isEmpty()){
-            extension = ".png"
-        }else{
-            extension = "."+extension
-        }
-        var fileName = ""
+        var fileName = carousel.photo
         if (updateCarouselRequest.file !== null) {
+            var extension = updateCarouselRequest.file!!.contentType!!.substringAfterLast("/")
+
+            if(extension.isEmpty()){
+                extension = ".png"
+            }else{
+                extension = "."+extension
+            }
             fileName = Date().time.toString()+extension
             try {
+                minioClient.removeObject(
+                    RemoveObjectArgs.builder()
+                        .bucket(bucketName)
+                        .`object`("/category/" + carousel.photo)
+                        .build()
+                )
                 minioClient.putObject(
                     PutObjectArgs.builder()
                         .bucket(bucketName)

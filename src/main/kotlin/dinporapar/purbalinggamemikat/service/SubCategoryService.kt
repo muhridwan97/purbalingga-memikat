@@ -1,10 +1,6 @@
 package dinporapar.purbalinggamemikat.service
 
-import dinporapar.purbalinggamemikat.model.request.CreateSubCategoryRequest
-import dinporapar.purbalinggamemikat.model.request.RequestParams
-import dinporapar.purbalinggamemikat.model.request.UpdateCategoryRequest
-import dinporapar.purbalinggamemikat.model.request.UpdateSubCategoryRequest
-import dinporapar.purbalinggamemikat.model.response.CategoryResponse
+import dinporapar.purbalinggamemikat.model.request.*
 import dinporapar.purbalinggamemikat.model.response.SubCategoryResponse
 import dinporapar.purbalinggamemikat.model.response.pageable.ListResponse
 import java.io.InputStream
@@ -20,4 +16,6 @@ interface SubCategoryService {
     fun get(id: Long): SubCategoryResponse
 
     fun update(id: Long, updateSubCategoryRequest: UpdateSubCategoryRequest) : SubCategoryResponse
+
+    fun delete(id: Long, deleteSubCategoryRequest: DeleteSubCategoryRequest) : String
 }

@@ -7,5 +7,9 @@ data class RequestParams(
     val size: Int? = 10,
 
     val sortBy: String? = "created_at:ASC"
+//
+//    val latitude : String? = null,
+//
+//    val longitude : String? = null,
 
 )
